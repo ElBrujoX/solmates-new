@@ -1,4 +1,4 @@
-import express, { Request, Response, NextFunction } from 'express';
+import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
@@ -8,6 +8,8 @@ import { requestLogger } from './middleware/logging';
 import logger from './utils/logger';
 import { RequestHandler } from 'express-serve-static-core';
 import mongoose from 'mongoose';
+import swaggerUi from 'swagger-ui-express';
+import swaggerJsDoc from 'swagger-jsdoc';
 
 // Load environment variables
 dotenv.config();
@@ -19,7 +21,7 @@ app.use(helmet());
 app.use(cors({
   origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['X-API-KEY', 'Content-Type', 'Authorization']
+  allowedHeaders: ['X-API-KEY', 'Content-Type']
 }));
 app.use(express.json());
 
@@ -37,33 +39,6 @@ const globalLimiter = rateLimit({
   }
 });
 
-// Stricter rate limit for auth endpoints
-const authLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  max: 50, // limit each IP to 50 auth requests per hour
-  message: { error: 'Too many authentication attempts' },
-  handler: (req, res) => {
-    logger.warn('Auth rate limit exceeded', {
-      ip: req.ip,
-      path: req.path
-    });
-    res.status(429).json({ error: 'Too many authentication attempts, please try again later' });
-  }
-});
-
-// Different rate limits for different endpoints
-const analyticsLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100,
-  message: { error: 'Too many analytics requests' }
-});
-
-const reportsLimiter = rateLimit({
-  windowMs: 5 * 60 * 1000, // 5 minutes
-  max: 50,
-  message: { error: 'Too many report requests' }
-});
-
 // Add rate limit headers
 const rateLimitHeaders: RequestHandler = (req, res, next) => {
   if (req.rateLimit) {
@@ -77,12 +52,7 @@ const rateLimitHeaders: RequestHandler = (req, res, next) => {
 // Apply middleware
 app.use(express.json());
 app.use(rateLimitHeaders);
-
-// Apply rate limits
 app.use(globalLimiter);
-app.use('/api/auth', authLimiter);
-app.use('/api/analytics', analyticsLimiter);
-app.use('/api/reports', reportsLimiter);
 
 // Add logging middleware before routes
 app.use(requestLogger);
@@ -90,18 +60,8 @@ app.use(requestLogger);
 // Routes
 app.use('/api', apiRoutes);
 
-// After your routes and before error handler
-app.use((req, res, next) => {
-  logger.info(`Request: ${req.method} ${req.path}`);
-  next();
-});
-
 // Health check
-app.get('/', (req, res) => {
-  res.json({ status: 'ok' });
-});
-
-app.get('/health', (req, res) => {
+app.get('/health', (_req, res) => {
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
@@ -111,87 +71,57 @@ app.get('/health', (req, res) => {
 });
 
 // Error handler
-app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
+app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   logger.error('Error:', {
     message: err.message,
-    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
-    path: req.path,
-    method: req.method,
-    body: req.body,
-    query: req.query
+    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
   });
   
-  // Don't expose error details in production
   res.status(500).json({ 
     error: 'Internal Server Error',
     message: process.env.NODE_ENV === 'development' ? err.message : undefined
   });
 });
 
-// Move 404 handler before error handler
-app.use((req: express.Request, res: express.Response) => {
-  logger.warn(`404 Not Found: ${req.method} ${req.path}`);
+// 404 handler
+app.use((_req: express.Request, res: express.Response) => {
   res.status(404).json({ error: 'Not Found' });
 });
 
-// Update MongoDB connection options
-const mongooseOptions = {
-  serverSelectionTimeoutMS: 5000,
-  socketTimeoutMS: 45000,
-  family: 4,
-  retryWrites: true,
-  retryReads: true,
-  maxPoolSize: 10,
-  connectTimeoutMS: 10000,
-  // Add these for better resilience
-  autoIndex: true,
-  autoCreate: true
-};
-
-// Update connection logic
-mongoose.connect(process.env.MONGODB_URI as string, mongooseOptions)
+// MongoDB connection
+mongoose.connect(process.env.MONGODB_URI as string)
   .then(() => {
     logger.info('Connected to MongoDB');
   })
   .catch((error) => {
-    logger.error('MongoDB connection error:', {
-      message: error.message,
-      code: error.code,
-      name: error.name
-    });
-    // Don't exit in production, let it retry
+    logger.error('MongoDB connection error:', error);
     if (process.env.NODE_ENV !== 'production') {
       process.exit(1);
     }
   });
 
-// Update connection event handlers
-mongoose.connection.on('error', (error) => {
-  logger.error('MongoDB connection error:', {
-    message: error.message,
-    code: error.code,
-    name: error.name
-  });
-});
+// Swagger setup
+const swaggerOptions = {
+  definition: {
+    openapi: '3.0.0',
+    info: {
+      title: 'Solmates API',
+      version: '1.0.0',
+      description: 'Solmates Scam Reports API'
+    },
+    servers: [
+      {
+        url: `http://localhost:${process.env.PORT || 3000}`
+      }
+    ]
+  },
+  apis: ['./src/routes/*.ts']
+};
 
-mongoose.connection.on('disconnected', () => {
-  logger.warn('MongoDB disconnected. Attempting to reconnect...');
-  // Add delay before reconnect
-  setTimeout(() => {
-    mongoose.connect(process.env.MONGODB_URI as string, mongooseOptions)
-      .catch(err => logger.error('MongoDB reconnection failed:', err));
-  }, 5000);
-});
+const specs = swaggerJsDoc(swaggerOptions);
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
 
-// Add error handlers for uncaught exceptions
-process.on('uncaughtException', (error) => {
-  logger.error('Uncaught Exception:', error);
-  process.exit(1);
-});
-
-process.on('unhandledRejection', (error) => {
-  logger.error('Unhandled Rejection:', error);
-  process.exit(1);
-});
+// Serve static files
+app.use(express.static('public'));
 
 export default app; 

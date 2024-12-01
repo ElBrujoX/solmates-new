@@ -1,40 +1,20 @@
 import { Request, Response, NextFunction } from 'express';
-import { RequestHandler } from 'express-serve-static-core';
-import jwt from 'jsonwebtoken';
+import logger from '../utils/logger';
 
-interface JWTPayload {
-  id: string;
-  walletAddress: string;
-  roles?: string[];
-}
-
-export const authenticateJWT: RequestHandler = (req: Request, res: Response, next: NextFunction) => {
-  const authHeader = req.headers.authorization;
-
-  if (!authHeader?.startsWith('Bearer ')) {
-    res.status(401).json({ error: 'No token provided' });
+export const authenticateAPIKey = (req: Request, res: Response, next: NextFunction): void => {
+  const apiKey = req.header('X-API-KEY');
+  
+  if (!apiKey) {
+    logger.warn('Missing API key:', { ip: req.ip, path: req.path });
+    res.status(401).json({ error: 'API key required' });
     return;
   }
 
-  const token = authHeader.split(' ')[1];
-
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as JWTPayload;
-    (req as any).user = {
-      id: decoded.id,
-      walletAddress: decoded.walletAddress,
-      roles: decoded.roles
-    };
-    next();
-  } catch (error) {
-    res.status(401).json({ error: 'Invalid token' });
-  }
-};
-
-export const authenticateAPIKey: RequestHandler = (req: Request, res: Response, next: NextFunction) => {
-  const apiKey = req.headers['x-api-key'];
-
-  if (!apiKey || apiKey !== process.env.API_KEY) {
+  if (apiKey !== process.env.API_KEY) {
+    logger.warn('Invalid API key attempt:', {
+      ip: req.ip,
+      path: req.path
+    });
     res.status(401).json({ error: 'Invalid API key' });
     return;
   }

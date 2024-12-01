@@ -1,32 +1,21 @@
 import { Request, Response, NextFunction } from 'express';
-import { RequestHandler } from 'express-serve-static-core';
-import { User } from '../models/User';
+import logger from '../utils/logger';
 
-interface AuthenticatedRequest extends Request {
-  user?: {
-    id: string;
-    walletAddress: string;
-    roles?: string[];
-  };
-}
+export const validateApiKey = (req: Request, res: Response, next: NextFunction) => {
+  const apiKey = req.header('X-API-KEY');
+  
+  if (!apiKey) {
+    return res.status(401).json({ error: 'API key required' });
+  }
 
-export const requireRole = (roles: string[]): RequestHandler => {
-  return async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const authReq = req as AuthenticatedRequest;
-      if (!authReq.user?.id) {
-        res.status(401).json({ error: 'Authentication required' });
-        return;
-      }
+  if (apiKey !== process.env.API_KEY) {
+    logger.warn('Invalid API key attempt:', {
+      ip: req.ip,
+      path: req.path,
+      providedKey: apiKey
+    });
+    return res.status(401).json({ error: 'Invalid API key' });
+  }
 
-      const user = await User.findById(authReq.user.id);
-      if (!user || !roles.includes(user.role)) {
-        res.status(403).json({ error: 'Insufficient permissions' });
-        return;
-      }
-      next();
-    } catch (error) {
-      res.status(500).json({ error: 'Role verification failed' });
-    }
-  };
+  next();
 }; 
