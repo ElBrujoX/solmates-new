@@ -5,22 +5,22 @@ import { authenticate } from '../middleware/auth';
 const router = express.Router();
 
 // Scam Reports
-router.post('/reports', authenticate, watchtowerController.createReport);
-router.get('/reports', authenticate, watchtowerController.getReports);
-router.get('/reports/:id', authenticate, watchtowerController.getReportById);
-router.put('/reports/:id/verify', authenticate, watchtowerController.verifyReport);
-router.put('/reports/:id/dispute', authenticate, watchtowerController.disputeReport);
+router.post('/reports', watchtowerController.createReport);
+router.get('/reports', watchtowerController.getReports);
+router.get('/reports/:id', watchtowerController.getReportById);
+router.put('/reports/:id/verify', watchtowerController.verifyReport);
+router.put('/reports/:id/dispute', watchtowerController.disputeReport);
 
 // Risk Indicators
-router.get('/risks', authenticate, watchtowerController.getRiskIndicators);
-router.post('/risks', authenticate, watchtowerController.createRiskIndicator);
-router.put('/risks/:id/toggle', authenticate, watchtowerController.toggleRiskIndicator);
+router.get('/risks', watchtowerController.getRiskIndicators);
+router.post('/risks', watchtowerController.createRiskIndicator);
+router.put('/risks/:id/toggle', watchtowerController.toggleRiskIndicator);
 
 // Live Updates
-router.get('/updates', authenticate, watchtowerController.getLiveUpdates);
-router.post('/updates', authenticate, watchtowerController.createUpdate);
+router.get('/updates', watchtowerController.getLiveUpdates);
+router.post('/updates', watchtowerController.createUpdate);
 
 // Verified Scams
-router.get('/verified-scams', authenticate, watchtowerController.getVerifiedScams);
+router.get('/verified-scams', watchtowerController.getVerifiedScams);
 
 export default router; 

@@ -1,15 +1,15 @@
 import { Request, Response, NextFunction } from 'express';
 
-export const authenticate = async (req: Request, res: Response, next: NextFunction) => {
+export const authenticate = (req: Request, res: Response, next: NextFunction): void => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader) {
-    return res.status(401).json({ error: 'No authorization header' });
+    res.status(401).json({ error: 'No authorization header' });
+    return;
   }
 
   try {
     // Add your auth logic here
-    // For now, we'll just pass through
     next();
   } catch (error) {
     res.status(401).json({ error: 'Invalid token' });

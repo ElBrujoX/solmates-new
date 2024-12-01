@@ -1,6 +1,0 @@
-{
-  "/page": "app/page.js",
-  "/favicon.ico/route": "app/favicon.ico/route.js",
-  "/degen-den/page": "app/degen-den/page.js",
-  "/watch-tower/page": "app/watch-tower/page.js"
-}
