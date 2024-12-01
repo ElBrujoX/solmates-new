@@ -1,6 +1,5 @@
 {
   "version": 2,
-  "public": true,
   "builds": [
     {
       "src": "src/index.ts",
@@ -9,24 +8,17 @@
   ],
   "routes": [
     {
-      "src": "/api/(.*)",
-      "dest": "/src/index.ts",
+      "src": "/(.*)",
+      "dest": "src/index.ts",
+      "methods": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
       "headers": {
         "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
-        "Access-Control-Allow-Headers": "X-API-KEY,X-CSRF-Token,X-Requested-With,Accept,Accept-Version,Content-Length,Content-MD5,Content-Type,Date,X-Api-Version,Authorization"
-      },
-      "continue": true
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/src/index.ts",
-      "continue": true
+        "Access-Control-Allow-Headers": "X-API-KEY, X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization"
+      }
     }
   ],
   "env": {
     "NODE_ENV": "production",
-    "LOG_LEVEL": "info",
     "MONGODB_URI": "@mongodb_uri",
     "JWT_SECRET": "@jwt_secret",
     "API_KEY": "@api_key"

@@ -16,7 +16,11 @@ const app = express();
 
 // Basic security middleware
 app.use(helmet());
-app.use(cors());
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['X-API-KEY', 'Content-Type', 'Authorization']
+}));
 app.use(express.json());
 
 // Global rate limit per IP
@@ -72,7 +76,11 @@ const rateLimitHeaders: RequestHandler = (req, res, next) => {
 
 // Apply middleware
 app.use(helmet());
-app.use(cors());
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['X-API-KEY', 'Content-Type', 'Authorization']
+}));
 app.use(express.json());
 app.use(rateLimitHeaders);
 
@@ -125,17 +133,8 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
 
 // After your routes
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  logger.error('Unhandled error:', {
-    error: err.message,
-    stack: err.stack,
-    path: req.path,
-    method: req.method
-  });
-  
-  res.status(500).json({
-    error: 'Internal Server Error',
-    message: process.env.NODE_ENV === 'development' ? err.message : undefined
-  });
+  logger.error('Unhandled error:', err);
+  res.status(500).json({ error: 'Internal Server Error' });
 });
 
 // Add 404 handler
