@@ -18,6 +18,8 @@ const ScamReportSchema = new Schema({
   victims_count: Number,
   created_at: { type: Date, default: Date.now },
   updated_at: { type: Date, default: Date.now }
+}, {
+  collection: 'scamreports'
 });
 
 const RiskIndicatorSchema = new Schema({
@@ -34,6 +36,8 @@ const RiskIndicatorSchema = new Schema({
     affected_users: Number,
     related_links: [String]
   }
+}, {
+  collection: 'riskindicators'
 });
 
 const LiveUpdateSchema = new Schema({
@@ -46,6 +50,8 @@ const LiveUpdateSchema = new Schema({
   description: String,
   is_active: { type: Boolean, default: true },
   created_at: { type: Date, default: Date.now }
+}, {
+  collection: 'liveupdates'
 });
 
 const VerifiedScamSchema = new Schema({
@@ -57,6 +63,8 @@ const VerifiedScamSchema = new Schema({
   verified_at: { type: Date, default: Date.now },
   evidence_links: [String],
   related_cases: [String]
+}, {
+  collection: 'verifiedscams'
 });
 
 export const ScamReport = model('ScamReport', ScamReportSchema);

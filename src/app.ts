@@ -14,12 +14,33 @@ app.use('/api', watchtowerRoutes);
 
 // Basic health check
 app.get('/', (req, res) => {
-  res.json({ status: 'ok' });
+  res.json({ status: 'API is running' });
 });
 
-// Connect to MongoDB
-mongoose.connect(process.env.MONGODB_URI as string)
-  .then(() => console.log('Connected to MongoDB'))
-  .catch(err => console.error('MongoDB connection error:', err));
+// Connect to MongoDB with more detailed error handling
+mongoose.connect(process.env.MONGODB_URI as string, {
+  serverSelectionTimeoutMS: 5000,
+  socketTimeoutMS: 45000,
+  dbName: 'solmates',
+})
+.then(() => {
+  console.log('Connected to MongoDB');
+  // Log connection details (without sensitive info)
+  const conn = mongoose.connection;
+  console.log(`MongoDB Connected: ${conn.host}`);
+})
+.catch(err => {
+  console.error('MongoDB connection error:', err);
+  process.exit(1);
+});
+
+// Add error handlers
+mongoose.connection.on('error', err => {
+  console.error('MongoDB error:', err);
+});
+
+mongoose.connection.on('disconnected', () => {
+  console.log('MongoDB disconnected');
+});
 
 export default app; 
