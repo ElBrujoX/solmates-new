@@ -9,14 +9,26 @@
     "postinstall": "tsc"
   },
   "dependencies": {
+    "@solana/spl-token": "^0.3.11",
+    "@solana/wallet-adapter-base": "^0.9.23",
+    "@solana/web3.js": "^1.95.5",
+    "bcryptjs": "^2.4.3",
+    "bs58": "^6.0.0",
     "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
     "express": "^4.21.1",
+    "express-rate-limit": "^7.4.1",
+    "helmet": "^8.0.0",
+    "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.8.3",
-    "dotenv": "^16.4.5"
+    "tweetnacl": "^1.0.3"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/bs58": "^4.0.4",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
+    "@types/jsonwebtoken": "^9.0.7",
     "@types/node": "^20.17.9",
     "ts-node": "^10.9.2",
     "typescript": "^5.7.2"

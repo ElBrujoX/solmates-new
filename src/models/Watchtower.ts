@@ -3,6 +3,7 @@ import { Schema, model } from 'mongoose';
 const ScamReportSchema = new Schema({
   title: { type: String, required: true },
   description: { type: String, required: true },
+  scam_type: { type: String },
   contract_address: String,
   risk_level: {
     type: String,
@@ -21,6 +22,8 @@ const ScamReportSchema = new Schema({
 }, {
   collection: 'scamreports'
 });
+
+ScamReportSchema.index({ title: 'text', description: 'text' });
 
 const RiskIndicatorSchema = new Schema({
   indicator_type: { type: String, required: true },
