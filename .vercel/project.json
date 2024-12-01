@@ -1,7 +1,1 @@
-{
-  "buildCommand": "npm run build",
-  "devCommand": "npm run dev",
-  "installCommand": "npm install",
-  "framework": null,
-  "outputDirectory": "dist"
-} 
+{"projectId":"prj_UBrlAv4MHaVUXjFeXFe36sueE9IM","orgId":"team_OvJWzBEEItF9VumPxynOdiZR"}
