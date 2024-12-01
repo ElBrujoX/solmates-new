@@ -75,12 +75,6 @@ const rateLimitHeaders: RequestHandler = (req, res, next) => {
 };
 
 // Apply middleware
-app.use(helmet());
-app.use(cors({
-  origin: '*',
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['X-API-KEY', 'Content-Type', 'Authorization']
-}));
 app.use(express.json());
 app.use(rateLimitHeaders);
 
@@ -120,58 +114,73 @@ app.get('/health', (req, res) => {
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
   logger.error('Error:', {
     message: err.message,
-    stack: err.stack,
+    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
     path: req.path,
-    method: req.method
+    method: req.method,
+    body: req.body,
+    query: req.query
   });
   
+  // Don't expose error details in production
   res.status(500).json({ 
     error: 'Internal Server Error',
     message: process.env.NODE_ENV === 'development' ? err.message : undefined
   });
 });
 
-// After your routes
-app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  logger.error('Unhandled error:', err);
-  res.status(500).json({ error: 'Internal Server Error' });
-});
-
-// Add 404 handler
+// Move 404 handler before error handler
 app.use((req: express.Request, res: express.Response) => {
+  logger.warn(`404 Not Found: ${req.method} ${req.path}`);
   res.status(404).json({ error: 'Not Found' });
 });
 
-// Add connection options
+// Update MongoDB connection options
 const mongooseOptions = {
   serverSelectionTimeoutMS: 5000,
   socketTimeoutMS: 45000,
   family: 4,
-  retryWrites: true
+  retryWrites: true,
+  retryReads: true,
+  maxPoolSize: 10,
+  connectTimeoutMS: 10000,
+  // Add these for better resilience
+  autoIndex: true,
+  autoCreate: true
 };
 
-// Update MongoDB connection
+// Update connection logic
 mongoose.connect(process.env.MONGODB_URI as string, mongooseOptions)
   .then(() => {
     logger.info('Connected to MongoDB');
   })
   .catch((error) => {
-    logger.error('MongoDB connection error:', error);
-    // Don't exit in production
+    logger.error('MongoDB connection error:', {
+      message: error.message,
+      code: error.code,
+      name: error.name
+    });
+    // Don't exit in production, let it retry
     if (process.env.NODE_ENV !== 'production') {
       process.exit(1);
     }
   });
 
-// Add connection event handlers
+// Update connection event handlers
 mongoose.connection.on('error', (error) => {
-  logger.error('MongoDB connection error:', error);
+  logger.error('MongoDB connection error:', {
+    message: error.message,
+    code: error.code,
+    name: error.name
+  });
 });
 
 mongoose.connection.on('disconnected', () => {
   logger.warn('MongoDB disconnected. Attempting to reconnect...');
-  mongoose.connect(process.env.MONGODB_URI as string, mongooseOptions)
-    .catch(err => logger.error('Reconnection failed:', err));
+  // Add delay before reconnect
+  setTimeout(() => {
+    mongoose.connect(process.env.MONGODB_URI as string, mongooseOptions)
+      .catch(err => logger.error('MongoDB reconnection failed:', err));
+  }, 5000);
 });
 
 // Add error handlers for uncaught exceptions
