@@ -123,28 +123,56 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
   });
 });
 
-// MongoDB connection with retry
-const connectDB = async () => {
-  try {
-    await mongoose.connect(process.env.MONGODB_URI as string);
-    logger.info('Connected to MongoDB');
-  } catch (error) {
-    logger.error('MongoDB connection error:', error);
-    // Retry connection after 5 seconds
-    setTimeout(connectDB, 5000);
-  }
+// After your routes
+app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  logger.error('Unhandled error:', {
+    error: err.message,
+    stack: err.stack,
+    path: req.path,
+    method: req.method
+  });
+  
+  res.status(500).json({
+    error: 'Internal Server Error',
+    message: process.env.NODE_ENV === 'development' ? err.message : undefined
+  });
+});
+
+// Add 404 handler
+app.use((req: express.Request, res: express.Response) => {
+  res.status(404).json({ error: 'Not Found' });
+});
+
+// Add connection options
+const mongooseOptions = {
+  serverSelectionTimeoutMS: 5000,
+  socketTimeoutMS: 45000,
+  family: 4,
+  retryWrites: true
 };
 
-connectDB();
+// Update MongoDB connection
+mongoose.connect(process.env.MONGODB_URI as string, mongooseOptions)
+  .then(() => {
+    logger.info('Connected to MongoDB');
+  })
+  .catch((error) => {
+    logger.error('MongoDB connection error:', error);
+    // Don't exit in production
+    if (process.env.NODE_ENV !== 'production') {
+      process.exit(1);
+    }
+  });
 
-// Handle MongoDB connection errors
+// Add connection event handlers
 mongoose.connection.on('error', (error) => {
   logger.error('MongoDB connection error:', error);
 });
 
 mongoose.connection.on('disconnected', () => {
   logger.warn('MongoDB disconnected. Attempting to reconnect...');
-  connectDB();
+  mongoose.connect(process.env.MONGODB_URI as string, mongooseOptions)
+    .catch(err => logger.error('Reconnection failed:', err));
 });
 
 // Add error handlers for uncaught exceptions
