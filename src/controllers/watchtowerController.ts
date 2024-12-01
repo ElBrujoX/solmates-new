@@ -14,6 +14,20 @@ interface TrendingStats {
   latest_reports: any[];
 }
 
+interface TrendMetrics {
+  daily_increase: number;
+  weekly_increase: number;
+  avg_loss_per_victim: number;
+  severity_score: number;
+}
+
+interface ScamPattern {
+  pattern_type: string;
+  confidence: number;
+  similar_cases: number;
+  common_indicators: string[];
+}
+
 export const watchtowerController = {
   // Scam Reports
   async createReport(req: Request, res: Response): Promise<void> {
@@ -426,7 +440,16 @@ export const watchtowerController = {
             count: { $sum: 1 },
             total_loss: { $sum: '$loss_amount' },
             total_victims: { $sum: '$victims_count' },
-            latest_reports: { $push: '$$ROOT' }
+            latest_reports: { $push: '$$ROOT' },
+            // Add daily metrics
+            daily_avg: { 
+              $avg: { 
+                $divide: [
+                  { $subtract: ['$created_at', minDate] },
+                  (1000 * 60 * 60 * 24)
+                ]
+              }
+            }
           }
         },
         {
@@ -437,17 +460,52 @@ export const watchtowerController = {
             count: 1,
             total_loss: 1,
             total_victims: 1,
-            latest_reports: { $slice: ['$latest_reports', 5] }
+            latest_reports: { $slice: ['$latest_reports', 5] },
+            metrics: {
+              daily_increase: { $divide: ['$count', days] },
+              weekly_increase: { $multiply: [{ $divide: ['$count', days] }, 7] },
+              avg_loss_per_victim: { 
+                $cond: [
+                  { $eq: ['$total_victims', 0] },
+                  0,
+                  { $divide: ['$total_loss', '$total_victims'] }
+                ]
+              },
+              severity_score: {
+                $multiply: [
+                  { $divide: ['$total_loss', { $add: ['$total_victims', 1] }] },
+                  { $divide: ['$count', days] }
+                ]
+              }
+            },
+            pattern: {
+              pattern_type: {
+                $cond: [
+                  { $gt: ['$daily_avg', 5] },
+                  'High Frequency',
+                  'Normal'
+                ]
+              },
+              confidence: {
+                $multiply: [
+                  { $divide: ['$count', { $add: [days, 1] }] },
+                  100
+                ]
+              }
+            }
           }
         },
         {
-          $sort: { count: -1, total_loss: -1 }
+          $sort: { 'metrics.severity_score': -1 }
         }
-      ]) as TrendingStats[];
+      ]);
 
       res.json({
         timeframe: `${days} days`,
-        stats: trendingScams
+        total_scams: trendingScams.length,
+        total_loss: trendingScams.reduce((acc, curr) => acc + curr.total_loss, 0),
+        total_victims: trendingScams.reduce((acc, curr) => acc + curr.total_victims, 0),
+        trends: trendingScams
       });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
