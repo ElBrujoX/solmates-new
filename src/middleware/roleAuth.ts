@@ -1,14 +1,25 @@
 import { Request, Response, NextFunction } from 'express';
+import { RequestHandler } from 'express-serve-static-core';
 import { User } from '../models/User';
 
-interface AuthRequest extends Request {
-  user?: any;
+interface AuthenticatedRequest extends Request {
+  user?: {
+    id: string;
+    walletAddress: string;
+    roles?: string[];
+  };
 }
 
-export const requireRole = (roles: string[]) => {
-  return async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const requireRole = (roles: string[]): RequestHandler => {
+  return async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const user = await User.findById(req.user.id);
+      const authReq = req as AuthenticatedRequest;
+      if (!authReq.user?.id) {
+        res.status(401).json({ error: 'Authentication required' });
+        return;
+      }
+
+      const user = await User.findById(authReq.user.id);
       if (!user || !roles.includes(user.role)) {
         res.status(403).json({ error: 'Insufficient permissions' });
         return;

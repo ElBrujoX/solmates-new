@@ -1,22 +1,41 @@
 import { Schema, model } from 'mongoose';
 
 const ScamReportSchema = new Schema({
-  title: { type: String, required: true },
-  description: { type: String, required: true },
+  title: {
+    type: String,
+    required: true,
+    minlength: [3, 'Title must be at least 3 characters'],
+    maxlength: [100, 'Title cannot exceed 100 characters']
+  },
+  description: {
+    type: String,
+    required: true,
+    minlength: [10, 'Description must be at least 10 characters'],
+    maxlength: [1000, 'Description cannot exceed 1000 characters']
+  },
   scam_type: { type: String },
   contract_address: String,
   risk_level: {
     type: String,
-    enum: ['low', 'medium', 'high', 'critical'],
-    required: true
+    required: true,
+    enum: {
+      values: ['low', 'medium', 'high', 'critical'],
+      message: '{VALUE} is not a valid risk level'
+    }
   },
   status: {
     type: String,
     enum: ['pending', 'verified', 'disputed', 'resolved'],
     default: 'pending'
   },
-  loss_amount: Number,
-  victims_count: Number,
+  loss_amount: {
+    type: Number,
+    min: [0, 'Loss amount cannot be negative']
+  },
+  victims_count: {
+    type: Number,
+    min: [0, 'Victims count cannot be negative']
+  },
   created_at: { type: Date, default: Date.now },
   updated_at: { type: Date, default: Date.now }
 }, {
