@@ -9,13 +9,14 @@
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "src/index.ts"
+      "dest": "/src/index.ts"
     }
   ],
   "env": {
     "NODE_ENV": "production",
     "MONGODB_URI": "@mongodb_uri",
     "JWT_SECRET": "@jwt_secret",
-    "API_KEY": "@api_key"
+    "API_KEY": "@api_key",
+    "SOLANA_RPC_HOST": "@solana_rpc_host"
   }
 } 
