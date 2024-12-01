@@ -6,7 +6,7 @@
     "dev": "ts-node src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "vercel-build": "npm run build",
+    "vercel-build": "tsc && mv src/index.ts dist/",
     "test": "jest --config jest.config.js --detectOpenHandles"
   },
   "dependencies": {
