@@ -16,4 +16,9 @@ const logger = winston.createLogger({
   ]
 });
 
+// Prevent winston from crashing on unhandled errors
+logger.on('error', (error) => {
+  console.error('Logger error:', error);
+});
+
 export default logger; 
